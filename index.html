@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIR4 Scout System - Rastreamento de World Bosses</title>
+    <meta name="description" content="Sistema de cadastro e rastreamento de World Bosses do MIR4. Monitore spawns, localizações e status dos bosses em tempo real." />
+    <meta name="author" content="MIR4 Scout" />
+    
+    <meta property="og:title" content="MIR4 Scout System - Rastreamento de World Bosses" />
+    <meta property="og:description" content="Sistema de cadastro e rastreamento de World Bosses do MIR4" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        * {
+            border-color: hsl(217.2 32.6% 17.5%);
+        }
+        
+        :root {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 212.7 26.8% 83.9%;
+            --chart-1: 220 70% 50%;
+            --chart-2: 160 60% 45%;
+            --chart-3: 30 80% 55%;
+            --chart-4: 280 65% 60%;
+            --chart-5: 340 75% 55%;
+            --radius: 0.5rem;
+            --gradient-primary: linear-gradient(135deg, hsl(217.2 91.2% 59.8%) 0%, hsl(217.2 91.2% 69.8%) 100%);
+            --gradient-secondary: linear-gradient(135deg, hsl(217.2 32.6% 17.5%) 0%, hsl(217.2 32.6% 27.5%) 100%);
+            --gradient-hero: linear-gradient(135deg, hsl(222.2 84% 4.9%) 0%, hsl(217.2 32.6% 17.5%) 100%);
+            --gradient-card: linear-gradient(135deg, hsl(222.2 84% 4.9% / 0.5) 0%, hsl(217.2 32.6% 17.5% / 0.3) 100%);
+            --gradient-accent: linear-gradient(135deg, hsl(217.2 91.2% 59.8% / 0.2) 0%, hsl(217.2 91.2% 69.8% / 0.1) 100%);
+            --shadow-glow: 0 0 30px hsl(217.2 91.2% 59.8% / 0.3);
+            --shadow-card: 0 4px 20px hsl(222.2 84% 4.9% / 0.4);
+            --shadow-elevated: 0 10px 40px hsl(222.2 84% 4.9% / 0.6);
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Nunito', 'Quicksand', sans-serif;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        .card {
+            background: var(--gradient-card);
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-card);
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: inherit;
+        }
+        
+        .btn-primary {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+        
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-secondary {
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+        }
+        
+        .btn-destructive {
+            background: hsl(var(--destructive));
+            color: hsl(var(--destructive-foreground));
+        }
+        
+        .input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            font-family: inherit;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge-primary {
+            background: hsl(var(--primary) / 0.2);
+            color: hsl(var(--primary));
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .tab.active {
+            border-bottom-color: hsl(var(--primary));
+            color: hsl(var(--primary));
+        }
+        
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .grid-cols-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        
+        @media (max-width: 768px) {
+            .grid-cols-2, .grid-cols-4 {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: hsl(var(--background));
+            padding: 2rem;
+            border-radius: var(--radius);
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid hsl(var(--border));
+        }
+        
+        th {
+            font-weight: 600;
+            color: hsl(var(--primary));
+        }
+        
+        .timeline-item {
+            padding-left: 2rem;
+            border-left: 2px solid hsl(var(--primary));
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -0.5rem;
+            top: 0;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background: hsl(var(--primary));
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                    <h1 style="font-size: 2rem; font-weight: 800; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        MIR4 Scout System
+                    </h1>
+                    <p style="color: hsl(var(--muted-foreground));" id="subtitle">Sistema de Rastreamento de World Bosses</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="languageSelector" class="input" style="width: auto;">
+                        <option value="pt">🇧🇷 Português</option>
+                        <option value="en">🇺🇸 English</option>
+                        <option value="es">🇪🇸 Español</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="exportData()">
+                        <span>📥</span> <span id="exportBtn">Exportar</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">
+                        <span>📤</span> <span id="importBtn">Importar</span>
+                    </button>
+                    <input type="file" id="importFile" accept=".xlsx" style="display: none;" onchange="importData(event)">
+                </div>
+            </div>
+        </header>
+
+        <div style="border-bottom: 1px solid hsl(var(--border)); margin-bottom: 2rem;">
+            <div style="display: flex; gap: 1rem;">
+                <div class="tab active" onclick="changeTab('dashboard')" id="tab-dashboard">Dashboard</div>
+                <div class="tab" onclick="changeTab('cards')" id="tab-cards">Cards</div>
+                <div class="tab" onclick="changeTab('table')" id="tab-table">Tabela</div>
+                <div class="tab" onclick="changeTab('timeline')" id="tab-timeline">Timeline</div>
+            </div>
+        </div>
+
+        <div id="content-dashboard">
+            <div class="grid grid-cols-4" style="margin-bottom: 2rem;">
+                <div class="card">
+                    <h3 style="font-size: 0.875rem; color: hsl(var(--muted-foreground));" id="total-scouts-label">Total de Scouts</h3>
+                    <p style="font-size: 2rem; font-weight: 700;" id="total-scouts">0</p>
+                </div>
+                <div class="card">
+                    <h3 style="font-size: 0.875rem; color: hsl(var(--muted-foreground));" id="active-clans-label">Clãs Ativos</h3>
+                    <p style="font-size: 2rem; font-weight: 700;" id="active-clans">0</p>
+                </div>
+                <div class="card">
+                    <h3 style="font-size: 0.875rem; color: hsl(var(--muted-foreground));" id="covered-maps-label">Mapas Cobertos</h3>
+                    <p style="font-size: 2rem; font-weight: 700;" id="covered-maps">0</p>
+                </div>
+                <div class="card">
+                    <h3 style="font-size: 0.875rem; color: hsl(var(--muted-foreground));" id="languages-label">Idiomas</h3>
+                    <p style="font-size: 2rem; font-weight: 700;" id="languages">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-cards" class="hidden">
+            <div style="margin-bottom: 1rem;">
+                <button class="btn btn-primary" onclick="openModal()">
+                    <span>➕</span> <span id="add-scout-btn">Adicionar Scout</span>
+                </button>
+            </div>
+            <div id="scouts-grid" class="grid grid-cols-2"></div>
+        </div>
+
+        <div id="content-table" class="hidden">
+            <div class="card">
+                <table id="scouts-table">
+                    <thead>
+                        <tr>
+                            <th id="th-map">Mapa</th>
+                            <th id="th-shift">Turno</th>
+                            <th id="th-nickname">Apelido</th>
+                            <th id="th-power">Poder</th>
+                            <th id="th-clan">Clã</th>
+                            <th id="th-language">Idioma</th>
+                            <th id="th-wb">WB</th>
+                            <th id="th-actions">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scouts-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="content-timeline" class="hidden">
+            <div class="card">
+                <div id="timeline-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="scoutModal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1.5rem;" id="modal-title">Adicionar Scout</h2>
+            <form id="scoutForm" onsubmit="handleSubmit(event)">
+                <div style="margin-bottom: 1rem;">
+                    <label id="label-map">Mapa</label>
+                    <input type="text" class="input" id="map" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label id="label-shift">Turno</label>
+                    <select class="input" id="shift" required>
+                        <option value="morning" id="opt-morning">Manhã</option>
+                        <option value="afternoon" id="opt-afternoon">Tarde</option>
+                        <option value="night" id="opt-night">Noite</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label id="label-nickname">Apelido</label>
+                    <input type="text" class="input" id="nickname" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label id="label-power">Poder</label>
+                    <input type="number" class="input" id="power" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label id="label-clan">Clã</label>
+                    <input type="text" class="input" id="clan" required>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label id="label-language">Idioma</label>
+                    <select class="input" id="language" required>
+                        <option value="pt">Português</option>
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label id="label-wb">Função WB</label>
+                    <select class="input" id="wbRole" required>
+                        <option value="tank" id="opt-tank">Tank</option>
+                        <option value="dps" id="opt-dps">DPS</option>
+                        <option value="support" id="opt-support">Suporte</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()" id="cancel-btn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submit-btn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let scouts = JSON.parse(localStorage.getItem('mir4-scouts') || '[]');
+        let currentLanguage = localStorage.getItem('mir4-language') || 'pt';
+        let currentTab = 'dashboard';
+
+        const translations = {
+            pt: {
+                subtitle: 'Sistema de Rastreamento de World Bosses',
+                exportBtn: 'Exportar',
+                importBtn: 'Importar',
+                dashboard: 'Dashboard',
+                cards: 'Cards',
+                table: 'Tabela',
+                timeline: 'Timeline',
+                totalScouts: 'Total de Scouts',
+                activeClans: 'Clãs Ativos',
+                coveredMaps: 'Mapas Cobertos',
+                languages: 'Idiomas',
+                addScout: 'Adicionar Scout',
+                map: 'Mapa',
+                shift: 'Turno',
+                nickname: 'Apelido',
+                power: 'Poder',
+                clan: 'Clã',
+                language: 'Idioma',
+                wbRole: 'Função WB',
+                actions: 'Ações',
+                morning: 'Manhã',
+                afternoon: 'Tarde',
+                night: 'Noite',
+                tank: 'Tank',
+                dps: 'DPS',
+                support: 'Suporte',
+                cancel: 'Cancelar',
+                save: 'Salvar',
+                delete: 'Excluir',
+                registered: 'Cadastrado em'
+            },
+            en: {
+                subtitle: 'World Boss Tracking System',
+                exportBtn: 'Export',
+                importBtn: 'Import',
+                dashboard: 'Dashboard',
+                cards: 'Cards',
+                table: 'Table',
+                timeline: 'Timeline',
+                totalScouts: 'Total Scouts',
+                activeClans: 'Active Clans',
+                coveredMaps: 'Covered Maps',
+                languages: 'Languages',
+                addScout: 'Add Scout',
+                map: 'Map',
+                shift: 'Shift',
+                nickname: 'Nickname',
+                power: 'Power',
+                clan: 'Clan',
+                language: 'Language',
+                wbRole: 'WB Role',
+                actions: 'Actions',
+                morning: 'Morning',
+                afternoon: 'Afternoon',
+                night: 'Night',
+                tank: 'Tank',
+                dps: 'DPS',
+                support: 'Support',
+                cancel: 'Cancel',
+                save: 'Save',
+                delete: 'Delete',
+                registered: 'Registered on'
+            },
+            es: {
+                subtitle: 'Sistema de Seguimiento de World Bosses',
+                exportBtn: 'Exportar',
+                importBtn: 'Importar',
+                dashboard: 'Dashboard',
+                cards: 'Tarjetas',
+                table: 'Tabla',
+                timeline: 'Línea de Tiempo',
+                totalScouts: 'Total de Scouts',
+                activeClans: 'Clanes Activos',
+                coveredMaps: 'Mapas Cubiertos',
+                languages: 'Idiomas',
+                addScout: 'Agregar Scout',
+                map: 'Mapa',
+                shift: 'Turno',
+                nickname: 'Apodo',
+                power: 'Poder',
+                clan: 'Clan',
+                language: 'Idioma',
+                wbRole: 'Rol WB',
+                actions: 'Acciones',
+                morning: 'Mañana',
+                afternoon: 'Tarde',
+                night: 'Noche',
+                tank: 'Tanque',
+                dps: 'DPS',
+                support: 'Soporte',
+                cancel: 'Cancelar',
+                save: 'Guardar',
+                delete: 'Eliminar',
+                registered: 'Registrado el'
+            }
+        };
+
+        function t(key) {
+            return translations[currentLanguage][key] || key;
+        }
+
+        function updateLanguage() {
+            document.getElementById('subtitle').textContent = t('subtitle');
+            document.getElementById('exportBtn').textContent = t('exportBtn');
+            document.getElementById('importBtn').textContent = t('importBtn');
+            document.getElementById('tab-dashboard').textContent = t('dashboard');
+            document.getElementById('tab-cards').textContent = t('cards');
+            document.getElementById('tab-table').textContent = t('table');
+            document.getElementById('tab-timeline').textContent = t('timeline');
+            document.getElementById('total-scouts-label').textContent = t('totalScouts');
+            document.getElementById('active-clans-label').textContent = t('activeClans');
+            document.getElementById('covered-maps-label').textContent = t('coveredMaps');
+            document.getElementById('languages-label').textContent = t('languages');
+            document.getElementById('add-scout-btn').textContent = t('addScout');
+            document.getElementById('modal-title').textContent = t('addScout');
+            document.getElementById('label-map').textContent = t('map');
+            document.getElementById('label-shift').textContent = t('shift');
+            document.getElementById('label-nickname').textContent = t('nickname');
+            document.getElementById('label-power').textContent = t('power');
+            document.getElementById('label-clan').textContent = t('clan');
+            document.getElementById('label-language').textContent = t('language');
+            document.getElementById('label-wb').textContent = t('wbRole');
+            document.getElementById('opt-morning').textContent = t('morning');
+            document.getElementById('opt-afternoon').textContent = t('afternoon');
+            document.getElementById('opt-night').textContent = t('night');
+            document.getElementById('opt-tank').textContent = t('tank');
+            document.getElementById('opt-dps').textContent = t('dps');
+            document.getElementById('opt-support').textContent = t('support');
+            document.getElementById('cancel-btn').textContent = t('cancel');
+            document.getElementById('submit-btn').textContent = t('save');
+            document.getElementById('th-map').textContent = t('map');
+            document.getElementById('th-shift').textContent = t('shift');
+            document.getElementById('th-nickname').textContent = t('nickname');
+            document.getElementById('th-power').textContent = t('power');
+            document.getElementById('th-clan').textContent = t('clan');
+            document.getElementById('th-language').textContent = t('language');
+            document.getElementById('th-wb').textContent = t('wbRole');
+            document.getElementById('th-actions').textContent = t('actions');
+        }
+
+        document.getElementById('languageSelector').value = currentLanguage;
+        document.getElementById('languageSelector').addEventListener('change', (e) => {
+            currentLanguage = e.target.value;
+            localStorage.setItem('mir4-language', currentLanguage);
+            updateLanguage();
+            render();
+        });
+
+        function saveScouts() {
+            localStorage.setItem('mir4-scouts', JSON.stringify(scouts));
+        }
+
+        function changeTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`#tab-${tab}`).classList.add('active');
+            
+            ['dashboard', 'cards', 'table', 'timeline'].forEach(t => {
+                document.getElementById(`content-${t}`).classList.add('hidden');
+            });
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+            
+            render();
+        }
+
+        function openModal() {
+            document.getElementById('scoutModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('scoutModal').classList.remove('show');
+            document.getElementById('scoutForm').reset();
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            const scout = {
+                id: Date.now().toString(),
+                map: document.getElementById('map').value,
+                shift: document.getElementById('shift').value,
+                nickname: document.getElementById('nickname').value,
+                power: parseInt(document.getElementById('power').value),
+                clan: document.getElementById('clan').value,
+                language: document.getElementById('language').value,
+                wbRole: document.getElementById('wbRole').value,
+                createdAt: new Date().toISOString()
+            };
+            scouts.push(scout);
+            saveScouts();
+            closeModal();
+            render();
+        }
+
+        function deleteScout(id) {
+            if (confirm(t('delete') + '?')) {
+                scouts = scouts.filter(s => s.id !== id);
+                saveScouts();
+                render();
+            }
+        }
+
+        function exportData() {
+            const ws = XLSX.utils.json_to_sheet(scouts);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Scouts');
+            XLSX.writeFile(wb, 'mir4-scouts.xlsx');
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                scouts = XLSX.utils.sheet_to_json(worksheet);
+                saveScouts();
+                render();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function render() {
+            if (currentTab === 'dashboard') {
+                renderDashboard();
+            } else if (currentTab === 'cards') {
+                renderCards();
+            } else if (currentTab === 'table') {
+                renderTable();
+            } else if (currentTab === 'timeline') {
+                renderTimeline();
+            }
+        }
+
+        function renderDashboard() {
+            document.getElementById('total-scouts').textContent = scouts.length;
+            document.getElementById('active-clans').textContent = new Set(scouts.map(s => s.clan)).size;
+            document.getElementById('covered-maps').textContent = new Set(scouts.map(s => s.map)).size;
+            document.getElementById('languages').textContent = new Set(scouts.map(s => s.language)).size;
+        }
+
+        function renderCards() {
+            const grid = document.getElementById('scouts-grid');
+            grid.innerHTML = scouts.map(scout => `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <h3 style="font-weight: 700;">${scout.nickname}</h3>
+                        <button class="btn btn-destructive" style="padding: 0.25rem 0.5rem;" onclick="deleteScout('${scout.id}')">🗑️</button>
+                    </div>
+                    <div style="display: grid; gap: 0.5rem;">
+                        <p><strong>${t('map')}:</strong> ${scout.map}</p>
+                        <p><strong>${t('shift')}:</strong> ${t(scout.shift)}</p>
+                        <p><strong>${t('power')}:</strong> ${scout.power.toLocaleString()}</p>
+                        <p><strong>${t('clan')}:</strong> ${scout.clan}</p>
+                        <p><strong>${t('language')}:</strong> ${scout.language.toUpperCase()}</p>
+                        <p><strong>${t('wbRole')}:</strong> ${t(scout.wbRole)}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('scouts-table-body');
+            tbody.innerHTML = scouts.map(scout => `
+                <tr>
+                    <td>${scout.map}</td>
+                    <td>${t(scout.shift)}</td>
+                    <td>${scout.nickname}</td>
+                    <td>${scout.power.toLocaleString()}</td>
+                    <td>${scout.clan}</td>
+                    <td>${scout.language.toUpperCase()}</td>
+                    <td>${t(scout.wbRole)}</td>
+                    <td>
+                        <button class="btn btn-destructive" style="padding: 0.25rem 0.5rem;" onclick="deleteScout('${scout.id}')">
+                            ${t('delete')}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderTimeline() {
+            const timeline = document.getElementById('timeline-content');
+            const sortedScouts = [...scouts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            timeline.innerHTML = sortedScouts.map(scout => `
+                <div class="timeline-item">
+                    <p style="font-weight: 700;">${scout.nickname}</p>
+                    <p style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">
+                        ${t('registered')} ${new Date(scout.createdAt).toLocaleString()}
+                    </p>
+                    <p style="margin-top: 0.5rem;">${scout.map} - ${t(scout.shift)} - ${scout.clan}</p>
+                </div>
+            `).join('');
+        }
+
+        updateLanguage();
+        render();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
